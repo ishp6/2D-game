@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gem Quest - 2D Puzzle Adventure</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+
+        .game-stats {
+            display: flex;
+            justify-content: space-around;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            text-align: center;
+            min-width: 120px;
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.3);
+        }
+
+        .stat-number {
+            font-size: 1.8rem;
+            font-weight: bold;
+            display: block;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .game-board {
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto 20px;
+            background: #2d3748;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: inset 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 4px;
+            aspect-ratio: 1;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cell:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(255,255,255,0.3);
+        }
+
+        .cell.selected {
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.6);
+        }
+
+        .cell.matching {
+            animation: pulse 0.5s ease-in-out;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        .cell.falling {
+            animation: fall 0.5s ease-in-out;
+        }
+
+        @keyframes fall {
+            from { transform: translateY(-100px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .gem-red { background: linear-gradient(135deg, #ff6b6b, #ee5a52); }
+        .gem-blue { background: linear-gradient(135deg, #4ecdc4, #44a08d); }
+        .gem-green { background: linear-gradient(135deg, #95e1d3, #a8e6cf); }
+        .gem-yellow { background: linear-gradient(135deg, #fce38a, #f38ba8); }
+        .gem-purple { background: linear-gradient(135deg, #a8edea, #fed6e3); }
+        .gem-orange { background: linear-gradient(135deg, #ff9a9e, #fecfef); }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #96deda, #50c9c3);
+        }
+
+        .game-over {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .game-over-content {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+        }
+
+        .game-over h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #e2e8f0;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            transition: width 0.3s ease;
+            border-radius: 5px;
+        }
+
+        .combo-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+            display: none;
+            animation: bounce 0.5s ease-in-out;
+        }
+
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+
+        .instructions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+
+        @media (max-width: 600px) {
+            .game-container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .game-stats {
+                justify-content: center;
+            }
+            
+            .stat-card {
+                min-width: 100px;
+                padding: 12px 20px;
+            }
+            
+            .cell {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>💎 Gem Quest</h1>
+            <p>Match 3 or more gems to score points and advance levels!</p>
+        </div>
+
+        <div class="instructions">
+            <strong>How to Play:</strong> Click on gems to select them, then click on adjacent gems to swap. Create lines of 3+ matching gems to score points. Complete level goals before running out of moves!
+        </div>
+
+        <div class="game-stats">
+            <div class="stat-card">
+                <span class="stat-number" id="score">0</span>
+                <span class="stat-label">Score</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="level">1</span>
+                <span class="stat-label">Level</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="moves">20</span>
+                <span class="stat-label">Moves</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-number" id="target">500</span>
+                <span class="stat-label">Target</span>
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+
+        <div class="game-board">
+            <div class="grid" id="gameGrid"></div>
+            <div class="combo-indicator" id="comboIndicator">COMBO x2!</div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="game.newGame()">🎮 New Game</button>
+            <button class="btn secondary" onclick="game.hint()">💡 Hint</button>
+            <button class="btn secondary" onclick="game.shuffle()">🔀 Shuffle</button>
+            <button class="btn secondary" onclick="game.pause()">⏸️ Pause</button>
+        </div>
+    </div>
+
+    <div class="game-over" id="gameOverModal">
+        <div class="game-over-content">
+            <h2 id="gameOverTitle">Level Complete!</h2>
+            <p id="gameOverMessage">Congratulations! You've completed the level.</p>
+            <div style="margin: 20px 0;">
+                <strong>Final Score: <span id="finalScore">0</span></strong>
+            </div>
+            <button class="btn" onclick="game.nextLevel()">Next Level</button>
+            <button class="btn secondary" onclick="game.newGame()">New Game</button>
+        </div>
+    </div>
+
+    <script>
+        class GemQuest {
+            constructor() {
+                this.gridSize = 8;
+                this.gemTypes = ['💎', '💰', '⭐', '🟨', '🟪', '🟧'];
+                this.gemColors = ['gem-red', 'gem-blue', 'gem-green', 'gem-yellow', 'gem-purple', 'gem-orange'];
+                this.board = [];
+                this.selectedCell = null;
+                this.score = 0;
+                this.level = 1;
+                this.moves = 20;
+                this.target = 500;
+                this.combo = 0;
+                this.isPaused = false;
+                this.init();
+            }
+
+            init() {
+                this.createBoard();
+                this.renderBoard();
+                this.updateUI();
+            }
+
+            createBoard() {
+                this.board = [];
+                for (let row = 0; row < this.gridSize; row++) {
+                    this.board[row] = [];
+                    for (let col = 0; col < this.gridSize; col++) {
+                        do {
+                            this.board[row][col] = Math.floor(Math.random() * this.gemTypes.length);
+                        } while (this.hasInitialMatch(row, col));
+                    }
+                }
+            }
+
+            hasInitialMatch(row, col) {
+                const gem = this.board[row][col];
+                // Check horizontal
+                if (col >= 2 && this.board[row][col-1] === gem && this.board[row][col-2] === gem) {
+                    return true;
+                }
+                // Check vertical
+                if (row >= 2 && this.board[row-1][col] === gem && this.board[row-2][col] === gem) {
+                    return true;
+                }
+                return false;
+            }
+
+            renderBoard() {
+                const grid = document.getElementById('gameGrid');
+                grid.innerHTML = '';
+                
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        const cell = document.createElement('div');
+                        cell.className = `cell ${this.gemColors[this.board[row][col]]}`;
+                        cell.textContent = this.gemTypes[this.board[row][col]];
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        cell.addEventListener('click', () => this.handleCellClick(row, col));
+                        grid.appendChild(cell);
+                    }
+                }
+            }
+
+            handleCellClick(row, col) {
+                if (this.isPaused || this.moves <= 0) return;
+
+                const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                
+                if (!this.selectedCell) {
+                    this.selectedCell = { row, col };
+                    cell.classList.add('selected');
+                } else {
+                    const prevCell = document.querySelector(`[data-row="${this.selectedCell.row}"][data-col="${this.selectedCell.col}"]`);
+                    prevCell.classList.remove('selected');
+
+                    if (this.selectedCell.row === row && this.selectedCell.col === col) {
+                        this.selectedCell = null;
+                        return;
+                    }
+
+                    if (this.isAdjacent(this.selectedCell.row, this.selectedCell.col, row, col)) {
+                        this.swapGems(this.selectedCell.row, this.selectedCell.col, row, col);
+                        this.moves--;
+                        this.selectedCell = null;
+                    } else {
+                        this.selectedCell = { row, col };
+                        cell.classList.add('selected');
+                    }
+                }
+            }
+
+            isAdjacent(row1, col1, row2, col2) {
+                const rowDiff = Math.abs(row1 - row2);
+                const colDiff = Math.abs(col1 - col2);
+                return (rowDiff === 1 && colDiff === 0) || (rowDiff === 0 && colDiff === 1);
+            }
+
+            swapGems(row1, col1, row2, col2) {
+                // Swap gems
+                const temp = this.board[row1][col1];
+                this.board[row1][col1] = this.board[row2][col2];
+                this.board[row2][col2] = temp;
+
+                // Check for matches
+                const matches = this.findMatches();
+                if (matches.length > 0) {
+                    this.processMatches(matches);
+                    this.renderBoard();
+                    setTimeout(() => this.cascadeGems(), 300);
+                } else {
+                    // Swap back if no matches
+                    this.board[row1][col1] = this.board[row2][col2];
+                    this.board[row2][col2] = temp;
+                    this.moves++; // Return the move
+                }
+
+                this.updateUI();
+            }
+
+            findMatches() {
+                const matches = [];
+                const visited = new Set();
+
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        const key = `${row}-${col}`;
+                        if (visited.has(key)) continue;
+
+                        const horizontalMatch = this.findHorizontalMatch(row, col);
+                        const verticalMatch = this.findVerticalMatch(row, col);
+
+                        if (horizontalMatch.length >= 3) {
+                            matches.push(...horizontalMatch);
+                            horizontalMatch.forEach(pos => visited.add(`${pos.row}-${pos.col}`));
+                        }
+
+                        if (verticalMatch.length >= 3) {
+                            matches.push(...verticalMatch);
+                            verticalMatch.forEach(pos => visited.add(`${pos.row}-${pos.col}`));
+                        }
+                    }
+                }
+
+                return matches;
+            }
+
+            findHorizontalMatch(row, col) {
+                const gem = this.board[row][col];
+                const matches = [{ row, col }];
+
+                // Check right
+                for (let c = col + 1; c < this.gridSize && this.board[row][c] === gem; c++) {
+                    matches.push({ row, col: c });
+                }
+
+                // Check left
+                for (let c = col - 1; c >= 0 && this.board[row][c] === gem; c--) {
+                    matches.unshift({ row, col: c });
+                }
+
+                return matches;
+            }
+
+            findVerticalMatch(row, col) {
+                const gem = this.board[row][col];
+                const matches = [{ row, col }];
+
+                // Check down
+                for (let r = row + 1; r < this.gridSize && this.board[r][col] === gem; r++) {
+                    matches.push({ row: r, col });
+                }
+
+                // Check up
+                for (let r = row - 1; r >= 0 && this.board[r][col] === gem; r--) {
+                    matches.unshift({ row: r, col });
+                }
+
+                return matches;
+            }
+
+            processMatches(matches) {
+                // Calculate score
+                const matchCount = matches.length;
+                let points = matchCount * 50;
+                
+                if (matchCount >= 4) {
+                    points *= 2;
+                    this.combo++;
+                    this.showCombo();
+                } else if (matchCount >= 5) {
+                    points *= 3;
+                    this.combo++;
+                    this.showCombo();
+                }
+
+                if (this.combo > 0) {
+                    points *= (1 + this.combo * 0.5);
+                }
+
+                this.score += Math.round(points);
+
+                // Remove matched gems
+                matches.forEach(match => {
+                    const cell = document.querySelector(`[data-row="${match.row}"][data-col="${match.col}"]`);
+                    if (cell) {
+                        cell.classList.add('matching');
+                    }
+                    this.board[match.row][match.col] = -1; // Mark for removal
+                });
+            }
+
+            showCombo() {
+                const comboIndicator = document.getElementById('comboIndicator');
+                comboIndicator.textContent = `COMBO x${this.combo + 1}!`;
+                comboIndicator.style.display = 'block';
+                setTimeout(() => {
+                    comboIndicator.style.display = 'none';
+                }, 1500);
+            }
+
+            cascadeGems() {
+                let moved = false;
+
+                // Drop gems down
+                for (let col = 0; col < this.gridSize; col++) {
+                    for (let row = this.gridSize - 1; row >= 0; row--) {
+                        if (this.board[row][col] === -1) {
+                            for (let r = row - 1; r >= 0; r--) {
+                                if (this.board[r][col] !== -1) {
+                                    this.board[row][col] = this.board[r][col];
+                                    this.board[r][col] = -1;
+                                    moved = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Fill empty spaces with new gems
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        if (this.board[row][col] === -1) {
+                            this.board[row][col] = Math.floor(Math.random() * this.gemTypes.length);
+                            moved = true;
+                        }
+                    }
+                }
+
+                this.renderBoard();
+
+                // Check for new matches
+                if (moved) {
+                    setTimeout(() => {
+                        const newMatches = this.findMatches();
+                        if (newMatches.length > 0) {
+                            this.processMatches(newMatches);
+                            setTimeout(() => this.cascadeGems(), 300);
+                        } else {
+                            this.combo = 0; // Reset combo
+                            this.checkGameState();
+                        }
+                    }, 300);
+                } else {
+                    this.combo = 0;
+                    this.checkGameState();
+                }
+            }
+
+            checkGameState() {
+                this.updateUI();
+
+                if (this.score >= this.target) {
+                    this.showGameOver('Level Complete!', `Congratulations! You've reached ${this.target} points!`, true);
+                } else if (this.moves <= 0) {
+                    this.showGameOver('Game Over!', 'You ran out of moves. Try again!', false);
+                }
+            }
+
+            showGameOver(title, message, isWin) {
+                document.getElementById('gameOverTitle').textContent = title;
+                document.getElementById('gameOverMessage').textContent = message;
+                document.getElementById('finalScore').textContent = this.score;
+                document.getElementById('gameOverModal').style.display = 'flex';
+
+                // Hide next level button if game over
+                const nextBtn = document.querySelector('#gameOverModal .btn:first-child');
+                nextBtn.style.display = isWin ? 'inline-block' : 'none';
+            }
+
+            nextLevel() {
+                this.level++;
+                this.moves = Math.max(15, 25 - this.level);
+                this.target = Math.round(this.target * 1.5);
+                document.getElementById('gameOverModal').style.display = 'none';
+                this.createBoard();
+                this.renderBoard();
+                this.updateUI();
+            }
+
+            newGame() {
+                this.score = 0;
+                this.level = 1;
+                this.moves = 20;
+                this.target = 500;
+                this.combo = 0;
+                this.selectedCell = null;
+                this.isPaused = false;
+                document.getElementById('gameOverModal').style.display = 'none';
+                this.createBoard();
+                this.renderBoard();
+                this.updateUI();
+            }
+
+            hint() {
+                if (this.moves <= 0) return;
+                
+                // Simple hint: highlight a random gem
+                const row = Math.floor(Math.random() * this.gridSize);
+                const col = Math.floor(Math.random() * this.gridSize);
+                const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                
+                cell.style.boxShadow = '0 0 20px #ffd700';
+                setTimeout(() => {
+                    cell.style.boxShadow = '';
+                }, 2000);
+            }
+
+            shuffle() {
+                if (this.moves <= 1) return;
+                
+                this.moves -= 2; // Shuffling costs 2 moves
+                
+                for (let row = 0; row < this.gridSize; row++) {
+                    for (let col = 0; col < this.gridSize; col++) {
+                        this.board[row][col] = Math.floor(Math.random() * this.gemTypes.length);
+                    }
+                }
+                
+                this.renderBoard();
+                this.updateUI();
+            }
+
+            pause() {
+                this.isPaused = !this.isPaused;
+                const pauseBtn = document.querySelector('.controls button:last-child');
+                pauseBtn.textContent = this.isPaused ? '▶️ Resume' : '⏸️ Pause';
+            }
+
+            updateUI() {
+                document.getElementById('score').textContent = this.score.toLocaleString();
+                document.getElementById('level').textContent = this.level;
+                document.getElementById('moves').textContent = this.moves;
+                document.getElementById('target').textContent = this.target.toLocaleString();
+                
+                const progress = Math.min(100, (this.score / this.target) * 100);
+                document.getElementById('progressFill').style.width = `${progress}%`;
+            }
+        }
+
+        // Initialize the game
+        const game = new GemQuest();
+    </script>
+</body>
+</html>
